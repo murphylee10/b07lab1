@@ -61,11 +61,7 @@ public class Polynomial {
             }
             bf.close();
 
-        } catch (FileNotFoundException e) {
-            System.out.println("Error occured. Creating zero polynomial...");
-            this.coefficients = new double[] { 0 };
-            this.exponents = new int[] { 0 };
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.out.println("Error occured. Creating zero polynomial...");
             this.coefficients = new double[] { 0 };
             this.exponents = new int[] { 0 };
