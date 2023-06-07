@@ -1,8 +1,6 @@
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Arrays;
 
@@ -16,14 +14,19 @@ public class Polynomial {
     }
 
     public Polynomial() {
-        this.coefficients = new double[] { 0 };
-        this.exponents = new int[] { 0 };
+        this.coefficients = new double[] {};
+        this.exponents = new int[] {};
     }
 
     public Polynomial(File f) {
         try {
             BufferedReader bf = new BufferedReader(new FileReader(f.getPath()));
             String expr = bf.readLine();
+            if (expr.equals("0")) {
+                this.coefficients = new double[] {};
+                this.exponents = new int[] {};
+                return;
+            }
             int start = (expr.charAt(0) == '-') ? 1 : 0;
             String[] terms = expr.substring(start).split("[+-]");
             String[] sign = new String[terms.length];
@@ -81,53 +84,42 @@ public class Polynomial {
         if (!validate(poly))
             return null;
 
-        // get sorted array of exponents
-        String exps = "";
-        int maxlen = Math.max(poly.coefficients.length, coefficients.length);
-        for (int i = 0; i < maxlen; i++) {
-            if (i < exponents.length && !exps.contains(Integer.toString(exponents[i]) + ","))
-                exps += Integer.toString(exponents[i]) + ",";
-            if (i < poly.exponents.length && !exps.contains(Integer.toString(poly.exponents[i]) + ","))
-                exps += Integer.toString(poly.exponents[i]) + ",";
-        }
-        String[] temp = exps.substring(0, exps.length() - 1).split(",");
-        double[] newCoeffs = new double[temp.length];
-        int[] newExps = new int[temp.length];
-        for (int i = 0; i < temp.length; i++) {
-            newExps[i] = Integer.parseInt(temp[i]);
-        }
-        Arrays.sort(newExps);
-
-        // populate new coefficients
-        for (int i = 0; i < newExps.length; i++) {
-            for (int j = 0; j < maxlen; j++) {
-                if (j < exponents.length && exponents[j] == newExps[i])
-                    newCoeffs[i] += coefficients[j];
-                if (j < poly.exponents.length && poly.exponents[j] == newExps[i])
-                    newCoeffs[i] += poly.coefficients[j];
-            }
+        // find maximum possible exponent
+        int max_index = Math.max(exponents.length, poly.exponents.length);
+        int max_exp = 0;
+        for (int i = 0; i < max_index; i++) {
+            max_exp = (i < exponents.length) ? Math.max(max_exp, exponents[i]) : max_exp;
+            max_exp = (i < poly.exponents.length) ? Math.max(max_exp, poly.exponents[i]) : max_exp;
         }
 
-        // strip zero-coefficient entries
-        int new_size = 0;
-        for (int i = 0; i < newCoeffs.length; i++) {
-            if (newCoeffs[i] != 0)
-                new_size++;
+        // update entries of created array
+        double[] coeffs = new double[max_exp + 1];
+
+        for (int i = 0; i < max_index; i++) {
+            if (i < exponents.length)
+                coeffs[exponents[i]] += coefficients[i];
+            if (i < poly.exponents.length)
+                coeffs[poly.exponents[i]] += poly.coefficients[i];
         }
-        if (new_size == 0)
-            return new Polynomial();
-        double[] newCoeffsStripped = new double[new_size];
-        int[] newExpsStripped = new int[new_size];
+
+        // find non trivial entries
+        int non_triv = 0;
+        for (int i = 0; i < max_exp + 1; i++)
+            non_triv = (coeffs[i] == 0) ? non_triv : non_triv + 1;
+
+        // strip array
+        double[] coeffs_strip = new double[non_triv];
+        int[] exps_strip = new int[non_triv];
         int index = 0;
-        for (int i = 0; i < newCoeffs.length; i++) {
-            if (newCoeffs[i] != 0) {
-                newCoeffsStripped[index] = newCoeffs[i];
-                newExpsStripped[index] = newExps[i];
+        for (int i = 0; i < max_exp + 1; i++) {
+            if (coeffs[i] != 0) {
+                coeffs_strip[index] = coeffs[i];
+                exps_strip[index] = i;
                 index++;
             }
         }
 
-        return new Polynomial(newCoeffsStripped, newExpsStripped);
+        return new Polynomial(coeffs_strip, exps_strip);
     }
 
     public double evaluate(double x) {
@@ -161,6 +153,8 @@ public class Polynomial {
     public void saveToFile(String path) {
         try {
             PrintStream ps = new PrintStream(path);
+            if (coefficients.length == 0)
+                ps.print("0");
             for (int i = 0; i < coefficients.length; i++) {
                 if (coefficients[i] == 0 && coefficients.length != 1)
                     continue;
